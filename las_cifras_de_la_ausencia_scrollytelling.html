@@ -833,9 +833,6 @@
 </head>
 <body>
 
-  <!-- Input de archivo oculto compartido para cargar el CSV una sola vez -->
-  <input type="file" id="shared-csv-input" accept=".csv,text/csv" style="display: none;" />
-
   <!-- Tooltip flotante único para las piezas D3 -->
   <div id="d3-tooltip" class="d3-tooltip" role="tooltip"></div>
 
@@ -875,9 +872,9 @@
       <!-- Botón inicial de carga de CSV (sincroniza todas las piezas D3) -->
       <div class="hero-global-upload">
         <button type="button" class="btn-csv trigger-csv-upload">
-          <span>↑ Cargar CSV (resultado_final_desapariciones.csv)</span>
+          <span>↻ Recargar resultado_final_desapariciones.csv</span>
         </button>
-        <span class="csv-status-badge" data-csv-status>Esperando archivo CSV...</span>
+        <span class="csv-status-badge" data-csv-status>Cargando archivo base...</span>
       </div>
 
       <a href="#pieza-1" class="scroll-cue">
@@ -935,7 +932,7 @@
                 <button type="button" class="btn-filter active" data-sort-p1="total">Mayor volumen</button>
                 <button type="button" class="btn-filter" data-sort-p1="alpha">Alfabético (A–Z)</button>
               </div>
-              <button type="button" class="btn-csv trigger-csv-upload">Cargar CSV</button>
+              <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV</button>
             </div>
           </div>
 
@@ -948,8 +945,8 @@
 
           <div class="viz-canvas" id="viz-pieza-1">
             <div class="viz-empty-state">
-              <p>Carga el archivo <strong>resultado_final_desapariciones.csv</strong> para dibujar las 32 entidades.</p>
-              <button type="button" class="btn-csv trigger-csv-upload">Seleccionar archivo CSV</button>
+              <p>El archivo <strong>resultado_final_desapariciones.csv</strong> se carga automáticamente desde la carpeta del proyecto.</p>
+              <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV base</button>
             </div>
           </div>
 
@@ -1038,7 +1035,7 @@
 
           <!-- Contenedor con ancho definido y sin ocultamiento para Flourish -->
           <div class="flourish-wrapper" id="flourish-container-p2">
-            <div class="flourish-embed flourish-hierarchy" data-src="visualisation/28524837"><script src="https://public.flourish.studio/resources/embed.js"></script><noscript><img src="https://public.flourish.studio/visualisation/28524837/thumbnail" width="100%" alt="hierarchy visualization" /></noscript></div><div class="flourish-fallback" data-for="visualisation/28524837"><a href="https://public.flourish.studio/visualisation/28524837/visualisation.json?ref=embed-script">https://public.flourish.studio/visualisation/28524837/visualisation.json?ref=embed-script</a></div>
+            <div class="flourish-embed flourish-map" data-src="visualisation/30902039"><script src="https://public.flourish.studio/resources/embed.js"></script><noscript><img src="https://public.flourish.studio/visualisation/30902039/thumbnail" width="100%" alt="map visualization" /></noscript></div><div class="flourish-fallback" data-for="visualisation/30902039"><a href="https://public.flourish.studio/visualisation/30902039/visualisation.json?ref=embed-script">https://public.flourish.studio/visualisation/30902039/visualisation.json?ref=embed-script</a></div>
           </div>
 
           <div class="graphic-footer">
@@ -1096,7 +1093,7 @@
                 <button type="button" class="btn-filter active" data-sort-p3="total">Total de registros</button>
                 <button type="button" class="btn-filter" data-sort-p3="diff">Mayor diferencia |H − M|</button>
               </div>
-              <button type="button" class="btn-csv trigger-csv-upload">Cargar CSV</button>
+              <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV</button>
             </div>
           </div>
 
@@ -1113,8 +1110,8 @@
 
           <div class="viz-canvas" id="viz-pieza-3">
             <div class="viz-empty-state">
-              <p>Carga el archivo <strong>resultado_final_desapariciones.csv</strong> para comparar registros por sexo.</p>
-              <button type="button" class="btn-csv trigger-csv-upload">Seleccionar archivo CSV</button>
+              <p>El archivo <strong>resultado_final_desapariciones.csv</strong> se carga automáticamente desde la carpeta del proyecto.</p>
+              <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV base</button>
             </div>
           </div>
 
@@ -1173,7 +1170,7 @@
                 <button type="button" class="btn-filter active" data-sort-p4="total">Orden por volumen</button>
                 <button type="button" class="btn-filter" data-sort-p4="pct_noloc">Mayor % no localizadas</button>
               </div>
-              <button type="button" class="btn-csv trigger-csv-upload">Cargar CSV</button>
+              <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV</button>
             </div>
           </div>
 
@@ -1194,8 +1191,8 @@
 
           <div class="viz-canvas" id="viz-pieza-4">
             <div class="viz-empty-state">
-              <p>Carga el archivo <strong>resultado_final_desapariciones.csv</strong> para explorar las proporciones por entidad.</p>
-              <button type="button" class="btn-csv trigger-csv-upload">Seleccionar archivo CSV</button>
+              <p>El archivo <strong>resultado_final_desapariciones.csv</strong> se carga automáticamente desde la carpeta del proyecto.</p>
+              <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV base</button>
             </div>
           </div>
 
@@ -1226,10 +1223,10 @@
           <div class="explorer-select-group">
             <label for="entity-selector">Selecciona una de las 32 entidades federativas</label>
             <select id="entity-selector" class="entity-select" disabled>
-              <option value="">Primero carga el archivo CSV para habilitar el buscador...</option>
+              <option value="">Cargando entidades desde el CSV base...</option>
             </select>
           </div>
-          <button type="button" class="btn-csv trigger-csv-upload">Cargar / Cambiar CSV</button>
+          <button type="button" class="btn-csv trigger-csv-upload">Recargar CSV base</button>
         </div>
 
         <div id="entity-detail-panel">
@@ -1327,6 +1324,7 @@
     function loadDisappearancesCSV(sourceInput, onSuccessCallback) {
       try {
         Papa.parse(sourceInput, {
+          download: typeof sourceInput === "string",
           header: true,
           skipEmptyLines: true,
           complete: function(results) {
@@ -2204,54 +2202,28 @@
        10. INICIALIZACIÓN DE BOTONES DE CARGA Y CONTROLES DE ORDENAMIENTO
        ========================================================================== */
     document.addEventListener("DOMContentLoaded", () => {
-      const fileInput = document.getElementById("shared-csv-input");
-
-      // Todos los botones "Cargar CSV" disparan el mismo selector de archivo y comparten datos
+      // Todos los botones recargan el mismo CSV ubicado junto a esta página.
       document.querySelectorAll(".trigger-csv-upload").forEach(btn => {
         btn.addEventListener("click", () => {
-          fileInput.click();
+          loadBaseCSV();
         });
       });
 
-      fileInput.addEventListener("change", (event) => {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
+      // Ruta base del CSV compartido por la visualización
+      const BASE_CSV_PATH = "./resultado_final_desapariciones.csv";
 
-        loadDisappearancesCSV(file, (cleanedData, totals) => {
-          updateUploadStatus(`Archivo cargado: ${file.name} (${cleanedData.length} entidades · ${formatInt(totals.total)} registros)`);
+      function loadBaseCSV() {
+        loadDisappearancesCSV(BASE_CSV_PATH, (cleanedData, totals) => {
+          updateUploadStatus(`Datos cargados: ${cleanedData.length} entidades · ${formatInt(totals.total)} registros`);
           renderPiece1();
           renderPiece3();
           renderPiece4();
           populateEntitySelector();
         });
-      });
+      }
 
-      // Filtros Pieza 1
-      document.querySelectorAll("[data-sort-p1]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          APP_STATE.sortP1 = btn.dataset.sortP1;
-          syncFilterButtons("[data-sort-p1]", "sortP1", APP_STATE.sortP1);
-          renderPiece1();
-        });
-      });
-
-      // Filtros Pieza 3
-      document.querySelectorAll("[data-sort-p3]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          APP_STATE.sortP3 = btn.dataset.sortP3;
-          syncFilterButtons("[data-sort-p3]", "sortP3", APP_STATE.sortP3);
-          renderPiece3();
-        });
-      });
-
-      // Filtros Pieza 4
-      document.querySelectorAll("[data-sort-p4]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          APP_STATE.sortP4 = btn.dataset.sortP4;
-          syncFilterButtons("[data-sort-p4]", "sortP4", APP_STATE.sortP4);
-          renderPiece4();
-        });
-      });
+      // El archivo CSV se carga automáticamente desde la ruta base del proyecto
+      loadBaseCSV();
 
       // Iniciar Scrollama
       initScrollama();
