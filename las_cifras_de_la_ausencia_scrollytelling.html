@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Las cifras de la ausencia — Visualización de Datos</title>
+
+  <!-- Google Fonts: Newsreader (editorial serif), Inter (UI/cuerpo) y JetBrains Mono (cifras) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet" />
+
+  <!-- Librerías desde CDN: D3 v7, Scrollama y PapaParse -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/scrollama"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       1. VARIABLES DE DISEÑO Y TOKENS EDITORIALES
+       ========================================================================== */
+    :root {
+      --bg-main: #141820;
+      --bg-card: #1E232B;
+      --bg-card-translucent: rgba(30, 35, 43, 0.92);
+      --border-subtle: rgba(241, 240, 237, 0.12);
+      --border-strong: rgba(241, 240, 237, 0.24);
+
+      --text-primary: #F1F0ED;
+      --text-secondary: #A7ADB7;
+      --text-muted: #767D89;
+
+      /* Paleta categórica estricta */
+      --color-total: #E07A5F;
+      --color-hombres: #6F90CC;
+      --color-mujeres: #D98196;
+      --color-no-loc: #E9C46A;
+      --color-vivas: #52B788;
+      --color-sin-vida: #C56A7A;
+
+      /* Tipografías */
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --container-max: 1320px;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+    }
+
+    /* ==========================================================================
+       2. RESET Y ESTILOS BASE
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       3. APERTURA / PORTADA EDITORIAL
+       ========================================================================== */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 4rem 1.5rem 3rem;
+      border-bottom: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    /* Patrón radial sutil en SVG de fondo */
+    .hero-radial-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.22;
+      z-index: 0;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .hero-kicker {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+      font-family: var(--font-serif);
+      font-size: clamp(2.6rem, 6vw, 4.5rem);
+      font-weight: 500;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-subtitle {
+      font-family: var(--font-sans);
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      font-weight: 300;
+      color: var(--text-secondary);
+      max-width: 720px;
+      margin: 0 auto 2.75rem;
+      line-height: 1.6;
+    }
+
+    .hero-stat-block {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.75rem 2.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-stat-number {
+      font-family: var(--font-mono);
+      font-size: clamp(3rem, 7vw, 5.25rem);
+      font-weight: 600;
+      line-height: 1;
+      color: var(--color-total);
+      letter-spacing: -0.03em;
+    }
+
+    .hero-stat-label {
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.65rem;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-script-box {
+      max-width: 680px;
+      margin: 0 auto 2.5rem;
+      padding: 1.25rem 1.5rem;
+      border-left: 2px solid var(--color-total);
+      background: rgba(30, 35, 43, 0.55);
+      text-align: left;
+      font-size: 0.98rem;
+      color: var(--text-primary);
+    }
+
+    .hero-global-upload {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0.85rem;
+      margin-bottom: 3rem;
+    }
+
+    .scroll-cue {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      opacity: 0.8;
+      transition: opacity 0.25s ease;
+    }
+
+    .scroll-cue:hover {
+      opacity: 1;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 36px;
+      background: linear-gradient(to bottom, var(--text-secondary), transparent);
+      animation: pulseLine 2.2s infinite ease-in-out;
+    }
+
+    @keyframes pulseLine {
+      0%, 100% { transform: scaleY(0.7); opacity: 0.4; }
+      50% { transform: scaleY(1); opacity: 1; }
+    }
+
+    /* ==========================================================================
+       4. BOTONES Y CONTROLES DE INTERFAZ
+       ========================================================================== */
+    .btn-csv {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
+      padding: 0.55rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-csv:hover {
+      background: #272E38;
+      border-color: var(--color-total);
+    }
+
+    .btn-csv.loaded {
+      border-color: var(--color-vivas);
+      color: var(--color-vivas);
+    }
+
+    .csv-status-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--bg-main);
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-filter {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-filter:hover {
+      color: var(--text-primary);
+    }
+
+    .btn-filter.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-weight: 500;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    /* ==========================================================================
+       5. ESTRUCTURA DE SCROLLYTELLING (STICKY GRAPHIC + STEPS)
+       ========================================================================== */
+    .scrolly-section {
+      position: relative;
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: 5rem 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .scrolly-grid {
+      display: grid;
+      grid-template-columns: minmax(300px, 380px) 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+
+    /* Columna de pasos narrativos */
+    .scrolly-steps {
+      position: relative;
+      z-index: 2;
+      padding-bottom: 20vh;
+    }
+
+    .step {
+      min-height: 72vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .step-card {
+      background: var(--bg-card-translucent);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      padding: 1.75rem;
+      transition: border-color 0.3s ease, opacity 0.3s ease;
+      opacity: 0.55;
+    }
+
+    .step.is-active .step-card {
+      opacity: 1;
+      border-left-color: var(--color-total);
+    }
+
+    .step-kicker {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 0.6rem;
+    }
+
+    .step-title {
+      font-family: var(--font-serif);
+      font-size: 1.45rem;
+      font-weight: 500;
+      line-height: 1.25;
+      margin-bottom: 0.85rem;
+      color: var(--text-primary);
+    }
+
+    .step-text {
+      font-size: 0.96rem;
+      color: var(--text-primary);
+      line-height: 1.65;
+    }
+
+    .step-note {
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .mono-inline {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      color: var(--text-primary);
+    }
+
+    /* Contenedor fijo (sticky) de la visualización */
+    .scrolly-graphic {
+      position: sticky;
+      top: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .graphic-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 1rem;
+    }
+
+    .graphic-title-group h3 {
+      font-family: var(--font-serif);
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1.25;
+    }
+
+    .graphic-subtitle {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .graphic-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Leyenda categórica */
+    .graphic-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .legend-swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    /* Área del lienzo D3 / Flourish */
+    .viz-canvas {
+      position: relative;
+      width: 100%;
+      min-height: 540px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .viz-empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-md);
+      width: 100%;
+      color: var(--text-secondary);
+    }
+
+    .viz-empty-state p {
+      margin-bottom: 1rem;
+      font-size: 0.92rem;
+    }
+
+    .graphic-footer {
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .graphic-footer strong {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ==========================================================================
+       6. PIEZA PROTAGONISTA: FLOURISH HIERARCHY RADIAL
+       ========================================================================== */
+    .flourish-wrapper {
+      width: 100%;
+      height: auto;
+      background: #FFFFFF;
+      border-radius: var(--radius-sm);
+      padding: 0.5rem;
+    }
+
+    .placeholder-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: rgba(233, 196, 106, 0.12);
+      border: 1px solid rgba(233, 196, 106, 0.35);
+      color: var(--color-no-loc);
+      padding: 0.55rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .radial-summary-pills {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      transition: transform 0.3s ease;
+    }
+
+    .radial-pill {
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+    }
+
+    .radial-pill.highlighted {
+      border-color: var(--border-strong);
+      background: #1A202A;
+    }
+
+    .radial-pill-label {
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .radial-pill-val {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 0.2rem;
+    }
+
+    /* ==========================================================================
+       7. TOOLTIP FLOTANTE (SOLO ACTIVO SOBRE LA GRÁFICA)
+       ========================================================================== */
+    .d3-tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      background: rgba(20, 24, 32, 0.96);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      max-width: 310px;
+      font-size: 0.82rem;
+      color: var(--text-primary);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .d3-tooltip.visible {
+      opacity: 1;
+    }
+
+    .tt-entity {
+      font-family: var(--font-serif);
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 0.22rem 0;
+    }
+
+    .tt-label {
+      color: var(--text-secondary);
+    }
+
+    .tt-value {
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+
+    .tt-note {
+      margin-top: 0.5rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.73rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* ==========================================================================
+       8. CIERRE: EXPLORADOR INTERACTIVO DE ENTIDADES Y METODOLOGÍA
+       ========================================================================== */
+    .closing-section {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 5.5rem 1.5rem 6rem;
+    }
+
+    .closing-header {
+      text-align: center;
+      max-width: 740px;
+      margin: 0 auto 3.5rem;
+    }
+
+    .closing-header h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    .closing-lead {
+      font-size: 1.02rem;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    /* Buscador y ficha de entidad */
+    .explorer-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .explorer-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .explorer-select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .explorer-select-group label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+
+    .entity-select {
+      background: var(--bg-main);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 0.7rem 1rem;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .entity-select:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .entity-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .metric-tile {
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem;
+    }
+
+    .metric-tile-label {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-tile-value {
+      font-family: var(--font-mono);
+      font-size: 1.55rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .metric-tile-sub {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+    }
+
+    /* Comparativa visual entidad vs archivo nacional */
+    .comparison-bars {
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1.35rem;
+    }
+
+    .comparison-title {
+      font-family: var(--font-serif);
+      font-size: 1.15rem;
+      margin-bottom: 1rem;
+    }
+
+    .comp-row {
+      margin-bottom: 1rem;
+    }
+
+    .comp-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .comp-row-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+
+    .stacked-track {
+      display: flex;
+      height: 18px;
+      width: 100%;
+      border-radius: 3px;
+      overflow: hidden;
+      background: #1B2028;
+    }
+
+    .stacked-seg {
+      height: 100%;
+      transition: width 0.4s ease;
+    }
+
+    /* Bloque de metodología y textos pendientes */
+    .methodology-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .method-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.75rem;
+    }
+
+    .method-card h3 {
+      font-family: var(--font-serif);
+      font-size: 1.3rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    .method-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    .method-list li strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .pending-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      background: rgba(224, 122, 95, 0.14);
+      color: var(--color-total);
+      border: 1px solid rgba(224, 122, 95, 0.35);
+      padding: 0.1rem 0.45rem;
+      border-radius: 3px;
+    }
+
+    /* ==========================================================================
+       9. RESPONSIVO PARA MÓVILES Y TABLETS
+       ========================================================================== */
+    @media (max-width: 960px) {
+      .scrolly-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .scrolly-graphic {
+        position: relative;
+        top: 0;
+        order: -1;
+      }
+
+      .scrolly-steps {
+        padding-bottom: 2rem;
+      }
+
+      .step {
+        min-height: auto;
+        margin-bottom: 1.25rem;
+      }
+
+      .radial-summary-pills {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Input de archivo oculto compartido para cargar el CSV una sola vez -->
+  <input type="file" id="shared-csv-input" accept=".csv,text/csv" style="display: none;" />
+
+  <!-- Tooltip flotante único para las piezas D3 -->
+  <div id="d3-tooltip" class="d3-tooltip" role="tooltip"></div>
+
+  <!-- ==========================================================================
+       SECCIÓN 0: APERTURA / PORTADA
+       ========================================================================== -->
+  <header class="hero" id="apertura">
+    <!-- Patrón radial sutil en SVG que conecta visualmente con la Pieza 2 -->
+    <svg class="hero-radial-bg" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <g transform="translate(500,500)" stroke="#A7ADB7" fill="none">
+        <circle r="140" stroke-width="0.6" stroke-dasharray="3 6" />
+        <circle r="240" stroke-width="0.6" />
+        <circle r="340" stroke-width="0.5" stroke-dasharray="2 8" />
+        <circle r="440" stroke-width="0.5" />
+        <!-- 32 radios simbólicos (una línea por entidad federativa) -->
+        <g id="hero-radial-spokes" stroke-width="0.5" opacity="0.65"></g>
+      </g>
+    </svg>
+
+    <div class="hero-content">
+      <p class="hero-kicker">Proyecto Final · Visualización de Datos</p>
+      <h1 class="hero-title">Las cifras de la ausencia</h1>
+      <p class="hero-subtitle">
+        Una mirada a 268,944 registros de personas desaparecidas y localizadas en México: dónde se concentran y qué revelan sobre su condición de localización.
+      </p>
+
+      <div class="hero-stat-block">
+        <span class="hero-stat-number">268,944</span>
+        <span class="hero-stat-label">registros agregados en 32 entidades federativas</span>
+      </div>
+
+      <!-- Texto literal del guion para Apertura -->
+      <div class="hero-script-box">
+        Los registros del archivo suman 268,944 casos en 32 entidades. ¿Dónde se concentran y qué sabemos sobre su localización? El archivo no permite determinar por sí solo la evolución de 2016 a 2026.
+      </div>
+
+      <!-- Botón inicial de carga de CSV (sincroniza todas las piezas D3) -->
+      <div class="hero-global-upload">
+        <button type="button" class="btn-csv trigger-csv-upload">
+          <span>↑ Cargar CSV (resultado_final_desapariciones.csv)</span>
+        </button>
+        <span class="csv-status-badge" data-csv-status>Esperando archivo CSV...</span>
+      </div>
+
+      <a href="#pieza-1" class="scroll-cue">
+        <span>Desliza para explorar</span>
+        <span class="scroll-line"></span>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ==========================================================================
+         PIEZA 1: BARRAS HORIZONTALES EN D3 POR ENTIDAD
+         ========================================================================== -->
+    <section class="scrolly-section" id="pieza-1">
+      <div class="scrolly-grid">
+        <!-- Pasos narrativos -->
+        <div class="scrolly-steps" id="steps-pieza-1">
+          <div class="step is-active" data-piece="1" data-step="1">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 01 · Concentración territorial</div>
+              <h2 class="step-title">Dimensión nacional por entidad federativa</h2>
+              <p class="step-text">
+                Al observar las 32 entidades ordenadas por volumen total de registros, la distribución muestra fuertes contrastes territoriales a lo largo del país.
+              </p>
+              <div class="step-note">
+                <strong>Nota metodológica:</strong> La fila etiquetada originalmente como «México» en el archivo corresponde al <strong>Estado de México</strong>, no al total nacional.
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-piece="1" data-step="2">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 01 · Entidades con mayor volumen</div>
+              <h2 class="step-title">Tres entidades concentran casi tres de cada diez registros</h2>
+              <!-- Texto literal del guion para Pieza 1 -->
+              <p class="step-text">
+                El Estado de México registra 37,385 casos, seguido de Nuevo León (21,446) y Jalisco (19,620). “México” se refiere al Estado de México, no al total nacional.
+              </p>
+              <div class="step-note">
+                En conjunto, estas tres entidades reúnen <span class="mono-inline">78,451</span> registros del total agregado del archivo (<span class="mono-inline">268,944</span>).
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfica fija (Sticky) -->
+        <div class="scrolly-graphic">
+          <div class="graphic-header">
+            <div class="graphic-title-group">
+              <h3>Total de registros por entidad federativa</h3>
+              <p class="graphic-subtitle">Distribución absoluta de las 32 entidades (total_sumado)</p>
+            </div>
+            <div class="graphic-toolbar">
+              <div class="control-group" role="group" aria-label="Ordenar Pieza 1">
+                <button type="button" class="btn-filter active" data-sort-p1="total">Mayor volumen</button>
+                <button type="button" class="btn-filter" data-sort-p1="alpha">Alfabético (A–Z)</button>
+              </div>
+              <button type="button" class="btn-csv trigger-csv-upload">Cargar CSV</button>
+            </div>
+          </div>
+
+          <div class="graphic-legend">
+            <span class="legend-item">
+              <span class="legend-swatch" style="background: var(--color-total);"></span>
+              Total de registros sumados por entidad
+            </span>
+          </div>
+
+          <div class="viz-canvas" id="viz-pieza-1">
+            <div class="viz-empty-state">
+              <p>Carga el archivo <strong>resultado_final_desapariciones.csv</strong> para dibujar las 32 entidades.</p>
+              <button type="button" class="btn-csv trigger-csv-upload">Seleccionar archivo CSV</button>
+            </div>
+          </div>
+
+          <div class="graphic-footer">
+            <strong>Nota:</strong> «México» en el CSV original se muestra como «Estado de México».<br />
+            Fuente: elaboración propia a partir de resultado_final_desapariciones.csv. Corte agregado de 32 entidades. Fuente original, cobertura temporal y fecha de corte pendientes de documentar.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PIEZA 2: FLOURISH HIERARCHY RADIAL (VISUAL PROTAGONISTA)
+         ========================================================================== -->
+    <section class="scrolly-section" id="pieza-2">
+      <div class="scrolly-grid">
+        <!-- Pasos narrativos -->
+        <div class="scrolly-steps" id="steps-pieza-2">
+          <div class="step is-active" data-piece="2" data-step="1">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 02 · Estructura radial</div>
+              <h2 class="step-title">De las 32 entidades a su condición de localización</h2>
+              <p class="step-text">
+                Esta jerarquía radial conecta cada entidad federativa con la clasificación de sus registros según su condición de localización reportada en el corte.
+              </p>
+              <div class="step-note">
+                Explora directamente los nodos y conexiones de la visualización interactiva para observar el peso de cada rama.
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-piece="2" data-step="2">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 02 · Tres categorías excluyentes</div>
+              <h2 class="step-title">Desglose por condición de localización</h2>
+              <!-- Texto literal del guion para Pieza 2 -->
+              <p class="step-text">
+                Explora la distribución territorial y el estado de localización. En el archivo hay 92,321 registros no localizados, 160,850 localizados con vida y 15,773 localizados sin vida. Cada registro debe pertenecer a una sola categoría.
+              </p>
+              <div class="step-note">
+                La suma de estas tres condiciones equivale exactamente a los <span class="mono-inline">268,944</span> registros totales del archivo.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfica fija (Sticky) con el Placeholder 2 exacto de Flourish -->
+        <div class="scrolly-graphic">
+          <div class="graphic-header">
+            <div class="graphic-title-group">
+              <h3>Jerarquía radial: Entidad → Condición de localización</h3>
+              <p class="graphic-subtitle">Conexiones entre las 32 entidades y las tres categorías de localización</p>
+            </div>
+          </div>
+
+          <!-- Etiqueta clara de ejemplo / placeholder -->
+          <div class="placeholder-banner">
+            <span>VISUALIZACIÓN DE EJEMPLO (PLACEHOLDER FLOURISH HIERARCHY)</span>
+            <span>Embed definitivo pendiente de inserción</span>
+          </div>
+
+          <!-- Tarjetas resumen de los totales verificados del CSV -->
+          <div class="radial-summary-pills" id="p2-summary-pills">
+            <div class="radial-pill">
+              <div class="radial-pill-label">
+                <span class="legend-swatch" style="background: var(--color-vivas);"></span>
+                Localizadas con vida
+              </div>
+              <div class="radial-pill-val">160,850</div>
+            </div>
+            <div class="radial-pill">
+              <div class="radial-pill-label">
+                <span class="legend-swatch" style="background: var(--color-no-loc);"></span>
+                No localizadas
+              </div>
+              <div class="radial-pill-val">92,321</div>
+            </div>
+            <div class="radial-pill">
+              <div class="radial-pill-label">
+                <span class="legend-swatch" style="background: var(--color-sin-vida);"></span>
+                Localizadas sin vida
+              </div>
+              <div class="radial-pill-val">15,773</div>
+            </div>
+          </div>
+
+          <!-- Contenedor con ancho definido y sin ocultamiento para Flourish -->
+          <div class="flourish-wrapper" id="flourish-container-p2">
+            <div class="flourish-embed flourish-hierarchy" data-src="visualisation/28524837"><script src="https://public.flourish.studio/resources/embed.js"></script><noscript><img src="https://public.flourish.studio/visualisation/28524837/thumbnail" width="100%" alt="hierarchy visualization" /></noscript></div><div class="flourish-fallback" data-for="visualisation/28524837"><a href="https://public.flourish.studio/visualisation/28524837/visualisation.json?ref=embed-script">https://public.flourish.studio/visualisation/28524837/visualisation.json?ref=embed-script</a></div>
+          </div>
+
+          <div class="graphic-footer">
+            <strong>Nota:</strong> Vista preliminar mediante plantilla Flourish Hierarchy (visualisation/28524837). Los valores definitivos del archivo suman 160,850 localizadas con vida, 92,321 no localizadas y 15,773 localizadas sin vida.<br />
+            Fuente: elaboración propia a partir de resultado_final_desapariciones.csv. Corte agregado de 32 entidades. Fuente original, cobertura temporal y fecha de corte pendientes de documentar.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PIEZA 3: BARRAS AGRUPADAS EN D3 (HOMBRES Y MUJERES POR ENTIDAD)
+         ========================================================================== -->
+    <section class="scrolly-section" id="pieza-3">
+      <div class="scrolly-grid">
+        <!-- Pasos narrativos -->
+        <div class="scrolly-steps" id="steps-pieza-3">
+          <div class="step is-active" data-piece="3" data-step="1">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 03 · Desagregación por sexo</div>
+              <h2 class="step-title">Registros de hombres y mujeres por entidad</h2>
+              <p class="step-text">
+                Al comparar ambas columnas lado a lado manteniendo el orden por volumen total, se observa que los registros de hombres superan a los de mujeres en la mayoría de las entidades.
+              </p>
+              <div class="step-note">
+                En el Estado de México, en cambio, las cifras son casi equivalentes: <span class="mono-inline">18,844</span> hombres y <span class="mono-inline">18,530</span> mujeres.
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-piece="3" data-step="2">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 03 · Brechas y precisión metodológica</div>
+              <h2 class="step-title">Diferencias pronunciadas y 418 registros sin asignar</h2>
+              <!-- Texto literal del guion para Pieza 3 -->
+              <p class="step-text">
+                El archivo contiene 164,801 registros de hombres y 103,725 de mujeres. La suma difiere del total por 418 registros; no debemos asignar esa diferencia a una categoría sin verificar su definición.
+              </p>
+              <div class="step-note">
+                <strong>Destaque territorial:</strong> En <strong>Jalisco</strong>, el archivo registra <span class="mono-inline">15,174</span> hombres frente a <span class="mono-inline">4,443</span> mujeres (una diferencia de <span class="mono-inline">10,731</span> registros).
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfica fija (Sticky) -->
+        <div class="scrolly-graphic">
+          <div class="graphic-header">
+            <div class="graphic-title-group">
+              <h3>Comparación por sexo: hombres y mujeres por entidad</h3>
+              <p class="graphic-subtitle">Valores absolutos registrados en cada entidad federativa</p>
+            </div>
+            <div class="graphic-toolbar">
+              <div class="control-group" role="group" aria-label="Ordenar Pieza 3">
+                <button type="button" class="btn-filter active" data-sort-p3="total">Total de registros</button>
+                <button type="button" class="btn-filter" data-sort-p3="diff">Mayor diferencia |H − M|</button>
+              </div>
+              <button type="button" class="btn-csv trigger-csv-upload">Cargar CSV</button>
+            </div>
+          </div>
+
+          <div class="graphic-legend">
+            <span class="legend-item">
+              <span class="legend-swatch" style="background: var(--color-hombres);"></span>
+              Hombres (164,801)
+            </span>
+            <span class="legend-item">
+              <span class="legend-swatch" style="background: var(--color-mujeres);"></span>
+              Mujeres (103,725)
+            </span>
+          </div>
+
+          <div class="viz-canvas" id="viz-pieza-3">
+            <div class="viz-empty-state">
+              <p>Carga el archivo <strong>resultado_final_desapariciones.csv</strong> para comparar registros por sexo.</p>
+              <button type="button" class="btn-csv trigger-csv-upload">Seleccionar archivo CSV</button>
+            </div>
+          </div>
+
+          <div class="graphic-footer">
+            <strong>Nota metodológica:</strong> La suma de hombres (164,801) y mujeres (103,725) es 268,526, lo que difiere por 418 registros respecto al total_sumado (268,944). Esa diferencia no se asigna a ninguna categoría adicional.<br />
+            Fuente: elaboración propia a partir de resultado_final_desapariciones.csv. Corte agregado de 32 entidades. Fuente original, cobertura temporal y fecha de corte pendientes de documentar.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PIEZA 4: BARRAS APILADAS AL 100% EN D3 (CONDICIÓN DE LOCALIZACIÓN)
+         ========================================================================== -->
+    <section class="scrolly-section" id="pieza-4">
+      <div class="scrolly-grid">
+        <!-- Pasos narrativos -->
+        <div class="scrolly-steps" id="steps-pieza-4">
+          <div class="step is-active" data-piece="4" data-step="1">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 04 · Volumen frente a composición</div>
+              <h2 class="step-title">La proporción interna cambia de una entidad a otra</h2>
+              <!-- Texto literal del guion para Pieza 4 -->
+              <p class="step-text">
+                ¿Qué proporción de los registros de cada entidad corresponde a personas no localizadas, localizadas con vida o localizadas sin vida? Comparar porcentajes evita confundir volumen con composición.
+              </p>
+              <div class="step-note">
+                En este primer paso las entidades mantienen el orden de volumen total de las piezas anteriores.
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-piece="4" data-step="2">
+            <div class="step-card">
+              <div class="step-kicker">Pieza 04 · Ordenado por % de no localizadas</div>
+              <h2 class="step-title">Mayor porcentaje de personas no localizadas</h2>
+              <p class="step-text">
+                Al reordenar de mayor a menor porcentaje de personas no localizadas, entidades con menor volumen total encabezan la proporción. <strong>Baja California</strong> registra <span class="mono-inline">3,606</span> personas no localizadas de un total de <span class="mono-inline">4,753</span> registros: aproximadamente el <span class="mono-inline">75.87%</span>, la proporción más alta del archivo.
+              </p>
+              <div class="step-note">
+                Una entidad con menos registros totales puede concentrar una proporción mucho mayor de personas que siguen sin ser localizadas.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfica fija (Sticky) -->
+        <div class="scrolly-graphic">
+          <div class="graphic-header">
+            <div class="graphic-title-group">
+              <h3>Composición porcentual por condición de localización (100%)</h3>
+              <p class="graphic-subtitle">Proporción relativa respecto al total_sumado de cada entidad</p>
+            </div>
+            <div class="graphic-toolbar">
+              <div class="control-group" role="group" aria-label="Ordenar Pieza 4">
+                <button type="button" class="btn-filter active" data-sort-p4="total">Orden por volumen</button>
+                <button type="button" class="btn-filter" data-sort-p4="pct_noloc">Mayor % no localizadas</button>
+              </div>
+              <button type="button" class="btn-csv trigger-csv-upload">Cargar CSV</button>
+            </div>
+          </div>
+
+          <div class="graphic-legend">
+            <span class="legend-item">
+              <span class="legend-swatch" style="background: var(--color-no-loc);"></span>
+              No localizadas
+            </span>
+            <span class="legend-item">
+              <span class="legend-swatch" style="background: var(--color-vivas);"></span>
+              Localizadas con vida
+            </span>
+            <span class="legend-item">
+              <span class="legend-swatch" style="background: var(--color-sin-vida);"></span>
+              Localizadas sin vida
+            </span>
+          </div>
+
+          <div class="viz-canvas" id="viz-pieza-4">
+            <div class="viz-empty-state">
+              <p>Carga el archivo <strong>resultado_final_desapariciones.csv</strong> para explorar las proporciones por entidad.</p>
+              <button type="button" class="btn-csv trigger-csv-upload">Seleccionar archivo CSV</button>
+            </div>
+          </div>
+
+          <div class="graphic-footer">
+            <strong>Nota:</strong> Cada barra representa el 100% de los registros sumados (total_sumado) de la entidad correspondiente.<br />
+            Fuente: elaboración propia a partir de resultado_final_desapariciones.csv. Corte agregado de 32 entidades. Fuente original, cobertura temporal y fecha de corte pendientes de documentar.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECCIÓN DE CIERRE: BUSCADOR INTERACTIVO Y METODOLOGÍA
+         ========================================================================== -->
+    <section class="closing-section" id="cierre">
+      <div class="closing-header">
+        <p class="hero-kicker">Cierre y exploración individual</p>
+        <h2>Consulta los datos de tu entidad</h2>
+        <!-- Texto literal del guion para Cierre -->
+        <p class="closing-lead">
+          Busca tu entidad y compara los resultados. El CSV es un corte agregado: falta documentar fuente original, fecha de corte, cobertura temporal y criterios. Para evaluar cambios de 2016 a 2026 o subregistro necesitamos series anuales y fuentes independientes comparables.
+        </p>
+      </div>
+
+      <!-- Explorador interactivo por entidad -->
+      <div class="explorer-box">
+        <div class="explorer-controls">
+          <div class="explorer-select-group">
+            <label for="entity-selector">Selecciona una de las 32 entidades federativas</label>
+            <select id="entity-selector" class="entity-select" disabled>
+              <option value="">Primero carga el archivo CSV para habilitar el buscador...</option>
+            </select>
+          </div>
+          <button type="button" class="btn-csv trigger-csv-upload">Cargar / Cambiar CSV</button>
+        </div>
+
+        <div id="entity-detail-panel">
+          <div class="viz-empty-state" style="border-style: solid;">
+            <p>Una vez cargado <strong>resultado_final_desapariciones.csv</strong>, aquí podrás consultar el desglose completo de cualquier entidad y compararlo con la proporción agregada nacional.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fichas metodológicas con marcadores [TEXTO PENDIENTE] -->
+      <div class="methodology-grid">
+        <article class="method-card">
+          <h3>Metodología y alcance del archivo</h3>
+          <ul class="method-list">
+            <li><strong>Archivo analizado:</strong> <span class="mono-inline">resultado_final_desapariciones.csv</span> (32 filas, 268,944 registros sumados).</li>
+            <li><strong>Normalización de etiqueta:</strong> El registro «México» del CSV se presenta como «Estado de México» para evitar ambigüedad con el total del país.</li>
+            <li><strong>Diferencia en desagregación por sexo:</strong> La suma de hombres (<span class="mono-inline">164,801</span>) y mujeres (<span class="mono-inline">103,725</span>) presenta una diferencia de <span class="mono-inline">418</span> registros respecto a <span class="mono-inline">total_sumado</span>. Se reporta sin imputar una tercera categoría.</li>
+            <li><strong>Límite temporal:</strong> El dataset no contiene desglose anual ni fecha de corte; no sustenta afirmaciones sobre tendencias entre 2016 y 2026 ni estimaciones de subregistro.</li>
+          </ul>
+        </article>
+
+        <article class="method-card">
+          <h3>Fuentes y documentación pendiente</h3>
+          <ul class="method-list">
+            <li><strong>Fuente institucional original:</strong> <span class="pending-tag">[TEXTO PENDIENTE]</span></li>
+            <li><strong>Fecha exacta de corte de los datos:</strong> <span class="pending-tag">[TEXTO PENDIENTE]</span></li>
+            <li><strong>Cobertura temporal del corte:</strong> <span class="pending-tag">[TEXTO PENDIENTE]</span></li>
+            <li><strong>Criterios de clasificación y registro:</strong> <span class="pending-tag">[TEXTO PENDIENTE]</span></li>
+            <li><strong>Créditos del proyecto y equipo:</strong> <span class="pending-tag">[TEXTO PENDIENTE]</span></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       1. ELEMENTOS DECORATIVOS INICIALES (PATRÓN RADIAL EN PORTADA)
+       ========================================================================== */
+    (function renderHeroRadialSpokes() {
+      const container = document.getElementById("hero-radial-spokes");
+      if (!container) return;
+      const totalSpokes = 32;
+      for (let i = 0; i < totalSpokes; i++) {
+        const angle = (i * 2 * Math.PI) / totalSpokes;
+        const x1 = Math.cos(angle) * 140;
+        const y1 = Math.sin(angle) * 140;
+        const x2 = Math.cos(angle) * 440;
+        const y2 = Math.sin(angle) * 440;
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", x1.toFixed(2));
+        line.setAttribute("y1", y1.toFixed(2));
+        line.setAttribute("x2", x2.toFixed(2));
+        line.setAttribute("y2", y2.toFixed(2));
+        container.appendChild(line);
+      }
+    })();
+
+    /* ==========================================================================
+       2. ESTADO GLOBAL DE LA APLICACIÓN Y PALETA DE COLORES
+       ========================================================================== */
+    const COLORS = {
+      total: "#E07A5F",
+      hombres: "#6F90CC",
+      mujeres: "#D98196",
+      noLoc: "#E9C46A",
+      vivas: "#52B788",
+      sinVida: "#C56A7A",
+      textPrimary: "#F1F0ED",
+      textSecondary: "#A7ADB7",
+      gridLine: "rgba(241, 240, 237, 0.08)"
+    };
+
+    const APP_STATE = {
+      rawData: [],
+      nationalTotals: null,
+      // Estado de pasos activos por pieza (Scrollama)
+      stepP1: 1,
+      stepP2: 1,
+      stepP3: 1,
+      stepP4: 1,
+      // Estado de ordenamiento por pieza
+      sortP1: "total",   // 'total' | 'alpha'
+      sortP3: "total",   // 'total' | 'diff'
+      sortP4: "total"    // 'total' | 'pct_noloc'
+    };
+
+    const formatInt = d3.format(",");
+    const formatPct = d3.format(".2f");
+
+    /* ==========================================================================
+       3. FUNCIÓN MODULAR DE LECTURA Y NORMALIZACIÓN DEL CSV (PapaParse)
+       Nota: Esta función puede sustituirse fácilmente por Papa.parse("data/01_archivo.csv", { download: true, ... })
+       ========================================================================== */
+    function loadDisappearancesCSV(sourceInput, onSuccessCallback) {
+      try {
+        Papa.parse(sourceInput, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            if (!results || !results.data || results.data.length === 0) {
+              console.error("El archivo CSV está vacío o no pudo leerse.");
+              return;
+            }
+
+            // Validar encabezados esperados
+            const requiredCols = [
+              "entidad",
+              "hombres",
+              "mujeres",
+              "localizadas_sin_vida",
+              "localizadas_vivas",
+              "no_localizadas",
+              "total_sumado"
+            ];
+            const fields = results.meta.fields || [];
+            const hasAllCols = requiredCols.every(col => fields.includes(col));
+            if (!hasAllCols) {
+              updateUploadStatus("Error: columnas faltantes en el CSV.", true);
+              return;
+            }
+
+            // Parseo riguroso de cada fila
+            const cleaned = results.data.map(row => {
+              const rawName = (row.entidad || "").trim();
+              const displayName = rawName === "México" ? "Estado de México" : rawName;
+
+              const hombres = Number(row.hombres) || 0;
+              const mujeres = Number(row.mujeres) || 0;
+              const sinVida = Number(row.localizadas_sin_vida) || 0;
+              const vivas = Number(row.localizadas_vivas) || 0;
+              const noLoc = Number(row.no_localizadas) || 0;
+              const total = Number(row.total_sumado) || 0;
+
+              const sexDiff = total - (hombres + mujeres);
+              const absSexGap = Math.abs(hombres - mujeres);
+
+              return {
+                rawEntidad: rawName,
+                entidad: displayName,
+                hombres,
+                mujeres,
+                sinVida,
+                vivas,
+                noLoc,
+                total,
+                sexDiff,
+                absSexGap,
+                pctNoLoc: total > 0 ? (noLoc / total) * 100 : 0,
+                pctVivas: total > 0 ? (vivas / total) * 100 : 0,
+                pctSinVida: total > 0 ? (sinVida / total) * 100 : 0
+              };
+            });
+
+            // Calcular totales agregados verificados del archivo
+            const totals = cleaned.reduce(
+              (acc, d) => {
+                acc.total += d.total;
+                acc.hombres += d.hombres;
+                acc.mujeres += d.mujeres;
+                acc.noLoc += d.noLoc;
+                acc.vivas += d.vivas;
+                acc.sinVida += d.sinVida;
+                acc.sexDiff += d.sexDiff;
+                return acc;
+              },
+              { total: 0, hombres: 0, mujeres: 0, noLoc: 0, vivas: 0, sinVida: 0, sexDiff: 0 }
+            );
+
+            totals.pctNoLoc = totals.total > 0 ? (totals.noLoc / totals.total) * 100 : 0;
+            totals.pctVivas = totals.total > 0 ? (totals.vivas / totals.total) * 100 : 0;
+            totals.pctSinVida = totals.total > 0 ? (totals.sinVida / totals.total) * 100 : 0;
+
+            APP_STATE.rawData = cleaned;
+            APP_STATE.nationalTotals = totals;
+
+            if (typeof onSuccessCallback === "function") {
+              onSuccessCallback(cleaned, totals);
+            }
+          },
+          error: function(err) {
+            console.error("Error al parsear CSV:", err);
+            updateUploadStatus("Error al leer el archivo CSV.", true);
+          }
+        });
+      } catch (err) {
+        console.error("Excepción en lectura de CSV:", err);
+      }
+    }
+
+    function updateUploadStatus(message, isError = false) {
+      document.querySelectorAll("[data-csv-status]").forEach(el => {
+        el.textContent = message;
+        el.style.color = isError ? COLORS.sinVida : COLORS.vivas;
+      });
+      document.querySelectorAll(".btn-csv.trigger-csv-upload").forEach(btn => {
+        if (!isError) btn.classList.add("loaded");
+      });
+    }
+
+    /* ==========================================================================
+       4. GESTIÓN DEL TOOLTIP FLOTANTE (MOUSE Y DISPOSITIVOS TÁCTILES)
+       ========================================================================== */
+    const tooltipEl = document.getElementById("d3-tooltip");
+
+    function showTooltip(event, htmlContent) {
+      tooltipEl.innerHTML = htmlContent;
+      tooltipEl.classList.add("visible");
+      moveTooltip(event);
+    }
+
+    function moveTooltip(event) {
+      const touch = event.touches && event.touches[0];
+      const clientX = touch ? touch.clientX : event.clientX;
+      const clientY = touch ? touch.clientY : event.clientY;
+
+      const pad = 16;
+      const rect = tooltipEl.getBoundingClientRect();
+      let left = clientX + pad;
+      let top = clientY - rect.height / 2;
+
+      if (left + rect.width > window.innerWidth - 12) {
+        left = clientX - rect.width - pad;
+      }
+      if (top < 12) top = 12;
+      if (top + rect.height > window.innerHeight - 12) {
+        top = window.innerHeight - rect.height - 12;
+      }
+
+      tooltipEl.style.left = `${left}px`;
+      tooltipEl.style.top = `${top}px`;
+    }
+
+    function hideTooltip() {
+      tooltipEl.classList.remove("visible");
+    }
+
+    // Ocultar tooltip al tocar fuera de barras en pantallas táctiles
+    document.addEventListener("touchstart", (e) => {
+      if (!e.target.closest(".interactive-bar")) {
+        hideTooltip();
+      }
+    }, { passive: true });
+
+    /* ==========================================================================
+       5. PIEZA 1: BARRAS HORIZONTALES EN D3 POR ENTIDAD
+       ========================================================================== */
+    function renderPiece1() {
+      const container = document.getElementById("viz-pieza-1");
+      if (!container || APP_STATE.rawData.length === 0) return;
+
+      const data = [...APP_STATE.rawData];
+      if (APP_STATE.sortP1 === "total") {
+        data.sort((a, b) => d3.descending(a.total, b.total));
+      } else {
+        data.sort((a, b) => d3.ascending(a.entidad, b.entidad));
+      }
+
+      const top3Names = new Set(["Estado de México", "Nuevo León", "Jalisco"]);
+      const highlightTop3 = APP_STATE.stepP1 === 2;
+
+      const width = container.clientWidth || 720;
+      const isMobile = width < 520;
+      const margin = { top: 24, right: isMobile ? 54 : 68, bottom: 20, left: isMobile ? 128 : 165 };
+      const barHeight = isMobile ? 16 : 18;
+      const barGap = 6;
+      const height = margin.top + margin.bottom + data.length * (barHeight + barGap);
+
+      let svg = d3.select(container).select("svg");
+      if (svg.empty()) {
+        container.innerHTML = "";
+        svg = d3.select(container)
+          .append("svg")
+          .attr("width", "100%")
+          .attr("preserveAspectRatio", "xMidYMid meet");
+
+        svg.append("g").attr("class", "grid-group");
+        svg.append("g").attr("class", "x-axis-group");
+        svg.append("g").attr("class", "bars-group");
+        svg.append("g").attr("class", "labels-group");
+        svg.append("g").attr("class", "y-axis-group");
+      }
+
+      svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+      const innerWidth = Math.max(120, width - margin.left - margin.right);
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const x = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.total) * 1.06])
+        .range([0, innerWidth]);
+
+      const y = d3.scaleBand()
+        .domain(data.map(d => d.entidad))
+        .range([0, innerHeight])
+        .paddingInner(0.25);
+
+      const t = svg.transition().duration(600).ease(d3.easeCubicOut);
+
+      // Líneas guía verticales sutiles
+      const xTicks = x.ticks(isMobile ? 3 : 5);
+      const gridG = svg.select(".grid-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const gridLines = gridG.selectAll("line").data(xTicks, d => d);
+      gridLines.join(
+        enter => enter.append("line")
+          .attr("x1", d => x(d))
+          .attr("x2", d => x(d))
+          .attr("y1", 0)
+          .attr("y2", innerHeight)
+          .attr("stroke", COLORS.gridLine),
+        update => update.transition(t)
+          .attr("x1", d => x(d))
+          .attr("x2", d => x(d))
+          .attr("y2", innerHeight),
+        exit => exit.remove()
+      );
+
+      // Eje X superior
+      const xAxisG = svg.select(".x-axis-group")
+        .attr("transform", `translate(${margin.left},${margin.top - 4})`);
+      xAxisG.call(d3.axisTop(x).ticks(isMobile ? 3 : 5).tickFormat(d3.format("~s")).tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .selectAll("text")
+        .attr("fill", COLORS.textSecondary)
+        .style("font-family", "JetBrains Mono, monospace")
+        .style("font-size", "10px");
+
+      // Barras
+      const barsG = svg.select(".bars-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const bars = barsG.selectAll("rect").data(data, d => d.entidad);
+      bars.join(
+        enter => enter.append("rect")
+          .attr("class", "interactive-bar")
+          .attr("x", 0)
+          .attr("y", d => y(d.entidad))
+          .attr("height", y.bandwidth())
+          .attr("rx", 2)
+          .attr("width", 0)
+          .attr("fill", COLORS.total)
+          .attr("opacity", d => (!highlightTop3 || top3Names.has(d.entidad) ? 0.95 : 0.25))
+          .call(el => el.transition(t).attr("width", d => x(d.total))),
+        update => update
+          .transition(t)
+          .attr("y", d => y(d.entidad))
+          .attr("height", y.bandwidth())
+          .attr("width", d => x(d.total))
+          .attr("opacity", d => (!highlightTop3 || top3Names.has(d.entidad) ? 0.95 : 0.25)),
+        exit => exit.remove()
+      );
+
+      // Interacción de tooltip
+      barsG.selectAll("rect")
+        .on("mouseenter touchstart", function(event, d) {
+          d3.select(this).attr("opacity", 1);
+          const shareNacional = ((d.total / APP_STATE.nationalTotals.total) * 100).toFixed(2);
+          const mexicoNote = d.rawEntidad === "México"
+            ? `<div class="tt-note">En el CSV original aparece como «México» (corresponde al Estado de México).</div>`
+            : "";
+          showTooltip(event, `
+            <div class="tt-entity">${d.entidad}</div>
+            <div class="tt-row"><span class="tt-label">Total sumado:</span><span class="tt-value" style="color:${COLORS.total}">${formatInt(d.total)}</span></div>
+            <div class="tt-row"><span class="tt-label">Peso en el archivo:</span><span class="tt-value">${shareNacional}%</span></div>
+            ${mexicoNote}
+          `);
+        })
+        .on("mousemove", moveTooltip)
+        .on("mouseleave", function(event, d) {
+          const baseOpacity = !highlightTop3 || top3Names.has(d.entidad) ? 0.95 : 0.25;
+          d3.select(this).attr("opacity", baseOpacity);
+          hideTooltip();
+        });
+
+      // Etiquetas de valor al final de cada barra
+      const labelsG = svg.select(".labels-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const valLabels = labelsG.selectAll("text").data(data, d => d.entidad);
+      valLabels.join(
+        enter => enter.append("text")
+          .attr("x", d => x(d.total) + 6)
+          .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+          .attr("dy", "0.35em")
+          .attr("fill", COLORS.textSecondary)
+          .style("font-family", "JetBrains Mono, monospace")
+          .style("font-size", isMobile ? "10px" : "11px")
+          .attr("opacity", d => (!highlightTop3 || top3Names.has(d.entidad) ? 1 : 0.35))
+          .text(d => formatInt(d.total)),
+        update => update
+          .transition(t)
+          .attr("x", d => x(d.total) + 6)
+          .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+          .attr("opacity", d => (!highlightTop3 || top3Names.has(d.entidad) ? 1 : 0.35))
+          .text(d => formatInt(d.total)),
+        exit => exit.remove()
+      );
+
+      // Etiquetas del eje Y (nombres de entidad)
+      const yAxisG = svg.select(".y-axis-group")
+        .attr("transform", `translate(${margin.left - 8},${margin.top})`);
+
+      const yLabels = yAxisG.selectAll("text").data(data, d => d.entidad);
+      yLabels.join(
+        enter => enter.append("text")
+          .attr("x", 0)
+          .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+          .attr("dy", "0.35em")
+          .attr("text-anchor", "end")
+          .attr("fill", COLORS.textPrimary)
+          .style("font-size", isMobile ? "11px" : "12px")
+          .attr("opacity", d => (!highlightTop3 || top3Names.has(d.entidad) ? 1 : 0.45))
+          .text(d => d.entidad),
+        update => update
+          .transition(t)
+          .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+          .attr("font-weight", d => (highlightTop3 && top3Names.has(d.entidad) ? "600" : "400"))
+          .attr("opacity", d => (!highlightTop3 || top3Names.has(d.entidad) ? 1 : 0.45))
+          .text(d => d.entidad),
+        exit => exit.remove()
+      );
+    }
+
+    /* ==========================================================================
+       6. PIEZA 3: BARRAS AGRUPADAS EN D3 (HOMBRES Y MUJERES POR ENTIDAD)
+       ========================================================================== */
+    function renderPiece3() {
+      const container = document.getElementById("viz-pieza-3");
+      if (!container || APP_STATE.rawData.length === 0) return;
+
+      const data = [...APP_STATE.rawData];
+      if (APP_STATE.sortP3 === "total") {
+        data.sort((a, b) => d3.descending(a.total, b.total));
+      } else {
+        data.sort((a, b) => d3.descending(a.absSexGap, b.absSexGap));
+      }
+
+      const highlightGap = APP_STATE.stepP3 === 2;
+      // Destacar las 5 entidades con mayor brecha absoluta (incluye Jalisco, Tamaulipas, etc.)
+      const topGapSet = new Set(
+        [...APP_STATE.rawData]
+          .sort((a, b) => d3.descending(a.absSexGap, b.absSexGap))
+          .slice(0, 5)
+          .map(d => d.entidad)
+      );
+
+      const width = container.clientWidth || 720;
+      const isMobile = width < 520;
+      const margin = { top: 24, right: isMobile ? 24 : 36, bottom: 20, left: isMobile ? 128 : 165 };
+      const rowHeight = isMobile ? 22 : 24;
+      const rowGap = 7;
+      const height = margin.top + margin.bottom + data.length * (rowHeight + rowGap);
+
+      let svg = d3.select(container).select("svg");
+      if (svg.empty()) {
+        container.innerHTML = "";
+        svg = d3.select(container)
+          .append("svg")
+          .attr("width", "100%")
+          .attr("preserveAspectRatio", "xMidYMid meet");
+
+        svg.append("g").attr("class", "grid-group");
+        svg.append("g").attr("class", "x-axis-group");
+        svg.append("g").attr("class", "rows-group");
+        svg.append("g").attr("class", "y-axis-group");
+      }
+
+      svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+      const innerWidth = Math.max(120, width - margin.left - margin.right);
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const maxSexVal = d3.max(data, d => Math.max(d.hombres, d.mujeres));
+      const x = d3.scaleLinear()
+        .domain([0, maxSexVal * 1.08])
+        .range([0, innerWidth]);
+
+      const y0 = d3.scaleBand()
+        .domain(data.map(d => d.entidad))
+        .range([0, innerHeight])
+        .paddingInner(0.24);
+
+      const y1 = d3.scaleBand()
+        .domain(["hombres", "mujeres"])
+        .range([0, y0.bandwidth()])
+        .padding(0.12);
+
+      const t = svg.transition().duration(600).ease(d3.easeCubicOut);
+
+      // Grid vertical
+      const xTicks = x.ticks(isMobile ? 3 : 5);
+      svg.select(".grid-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`)
+        .selectAll("line")
+        .data(xTicks, d => d)
+        .join(
+          enter => enter.append("line")
+            .attr("x1", d => x(d))
+            .attr("x2", d => x(d))
+            .attr("y1", 0)
+            .attr("y2", innerHeight)
+            .attr("stroke", COLORS.gridLine),
+          update => update.transition(t)
+            .attr("x1", d => x(d))
+            .attr("x2", d => x(d))
+            .attr("y2", innerHeight),
+          exit => exit.remove()
+        );
+
+      // Eje X superior
+      svg.select(".x-axis-group")
+        .attr("transform", `translate(${margin.left},${margin.top - 4})`)
+        .call(d3.axisTop(x).ticks(isMobile ? 3 : 5).tickFormat(d3.format("~s")).tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .selectAll("text")
+        .attr("fill", COLORS.textSecondary)
+        .style("font-family", "JetBrains Mono, monospace")
+        .style("font-size", "10px");
+
+      // Filas de barras agrupadas
+      const rowsG = svg.select(".rows-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const entityGroups = rowsG.selectAll("g.entity-group")
+        .data(data, d => d.entidad)
+        .join(
+          enter => {
+            const g = enter.append("g")
+              .attr("class", "entity-group")
+              .attr("transform", d => `translate(0,${y0(d.entidad)})`);
+
+            g.append("rect")
+              .attr("class", "bar-hombres interactive-bar")
+              .attr("x", 0)
+              .attr("y", y1("hombres"))
+              .attr("height", y1.bandwidth())
+              .attr("rx", 1.5)
+              .attr("fill", COLORS.hombres)
+              .attr("width", 0);
+
+            g.append("rect")
+              .attr("class", "bar-mujeres interactive-bar")
+              .attr("x", 0)
+              .attr("y", y1("mujeres"))
+              .attr("height", y1.bandwidth())
+              .attr("rx", 1.5)
+              .attr("fill", COLORS.mujeres)
+              .attr("width", 0);
+
+            return g;
+          },
+          update => update,
+          exit => exit.remove()
+        );
+
+      entityGroups.transition(t)
+        .attr("transform", d => `translate(0,${y0(d.entidad)})`)
+        .attr("opacity", d => (!highlightGap || topGapSet.has(d.entidad) ? 1 : 0.25));
+
+      entityGroups.select(".bar-hombres")
+        .transition(t)
+        .attr("y", y1("hombres"))
+        .attr("height", y1.bandwidth())
+        .attr("width", d => x(d.hombres));
+
+      entityGroups.select(".bar-mujeres")
+        .transition(t)
+        .attr("y", y1("mujeres"))
+        .attr("height", y1.bandwidth())
+        .attr("width", d => x(d.mujeres));
+
+      // Tooltip sobre cada grupo de entidad
+      entityGroups
+        .on("mouseenter touchstart", function(event, d) {
+          d3.select(this).attr("opacity", 1);
+          const diffNote = d.sexDiff !== 0
+            ? `<div class="tt-note">Diferencia no asignada respecto a total_sumado (${formatInt(d.total)}): <strong>${formatInt(d.sexDiff)}</strong> registros.</div>`
+            : `<div class="tt-note">Hombres + mujeres coincide exactamente con total_sumado (${formatInt(d.total)}).</div>`;
+
+          showTooltip(event, `
+            <div class="tt-entity">${d.entidad}</div>
+            <div class="tt-row"><span class="tt-label">Hombres:</span><span class="tt-value" style="color:${COLORS.hombres}">${formatInt(d.hombres)}</span></div>
+            <div class="tt-row"><span class="tt-label">Mujeres:</span><span class="tt-value" style="color:${COLORS.mujeres}">${formatInt(d.mujeres)}</span></div>
+            <div class="tt-row"><span class="tt-label">Brecha |H − M|:</span><span class="tt-value">${formatInt(d.absSexGap)}</span></div>
+            ${diffNote}
+          `);
+        })
+        .on("mousemove", moveTooltip)
+        .on("mouseleave", function(event, d) {
+          const baseOpacity = !highlightGap || topGapSet.has(d.entidad) ? 1 : 0.25;
+          d3.select(this).attr("opacity", baseOpacity);
+          hideTooltip();
+        });
+
+      // Eje Y (entidades)
+      const yAxisG = svg.select(".y-axis-group")
+        .attr("transform", `translate(${margin.left - 8},${margin.top})`);
+
+      yAxisG.selectAll("text")
+        .data(data, d => d.entidad)
+        .join(
+          enter => enter.append("text")
+            .attr("x", 0)
+            .attr("y", d => y0(d.entidad) + y0.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .attr("text-anchor", "end")
+            .attr("fill", COLORS.textPrimary)
+            .style("font-size", isMobile ? "11px" : "12px")
+            .text(d => d.entidad),
+          update => update.transition(t)
+            .attr("y", d => y0(d.entidad) + y0.bandwidth() / 2)
+            .attr("font-weight", d => (highlightGap && topGapSet.has(d.entidad) ? "600" : "400"))
+            .attr("opacity", d => (!highlightGap || topGapSet.has(d.entidad) ? 1 : 0.45))
+            .text(d => d.entidad),
+          exit => exit.remove()
+        );
+    }
+
+    /* ==========================================================================
+       7. PIEZA 4: BARRAS APILADAS AL 100% EN D3 (CONDICIÓN DE LOCALIZACIÓN)
+       ========================================================================== */
+    function renderPiece4() {
+      const container = document.getElementById("viz-pieza-4");
+      if (!container || APP_STATE.rawData.length === 0) return;
+
+      const data = [...APP_STATE.rawData];
+      if (APP_STATE.sortP4 === "total") {
+        data.sort((a, b) => d3.descending(a.total, b.total));
+      } else {
+        data.sort((a, b) => d3.descending(a.pctNoLoc, b.pctNoLoc));
+      }
+
+      const highlightBajaCal = APP_STATE.stepP4 === 2;
+
+      const width = container.clientWidth || 720;
+      const isMobile = width < 520;
+      const margin = { top: 24, right: isMobile ? 46 : 56, bottom: 20, left: isMobile ? 128 : 165 };
+      const barHeight = isMobile ? 16 : 18;
+      const barGap = 6;
+      const height = margin.top + margin.bottom + data.length * (barHeight + barGap);
+
+      let svg = d3.select(container).select("svg");
+      if (svg.empty()) {
+        container.innerHTML = "";
+        svg = d3.select(container)
+          .append("svg")
+          .attr("width", "100%")
+          .attr("preserveAspectRatio", "xMidYMid meet");
+
+        svg.append("g").attr("class", "x-axis-group");
+        svg.append("g").attr("class", "stacked-group");
+        svg.append("g").attr("class", "pct-labels-group");
+        svg.append("g").attr("class", "y-axis-group");
+      }
+
+      svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+      const innerWidth = Math.max(120, width - margin.left - margin.right);
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const x = d3.scaleLinear()
+        .domain([0, 100])
+        .range([0, innerWidth]);
+
+      const y = d3.scaleBand()
+        .domain(data.map(d => d.entidad))
+        .range([0, innerHeight])
+        .paddingInner(0.25);
+
+      const t = svg.transition().duration(650).ease(d3.easeCubicOut);
+
+      // Eje X porcentual superior
+      svg.select(".x-axis-group")
+        .attr("transform", `translate(${margin.left},${margin.top - 4})`)
+        .call(d3.axisTop(x).ticks(isMobile ? 4 : 5).tickFormat(d => `${d}%`).tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .selectAll("text")
+        .attr("fill", COLORS.textSecondary)
+        .style("font-family", "JetBrains Mono, monospace")
+        .style("font-size", "10px");
+
+      // Filas apiladas: Orden: No localizadas (izq) -> Localizadas con vida -> Localizadas sin vida
+      const stackedG = svg.select(".stacked-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const rows = stackedG.selectAll("g.stack-row")
+        .data(data, d => d.entidad)
+        .join(
+          enter => {
+            const g = enter.append("g")
+              .attr("class", "stack-row interactive-bar")
+              .attr("transform", d => `translate(0,${y(d.entidad)})`);
+
+            g.append("rect").attr("class", "seg-noloc").attr("fill", COLORS.noLoc).attr("height", y.bandwidth());
+            g.append("rect").attr("class", "seg-vivas").attr("fill", COLORS.vivas).attr("height", y.bandwidth());
+            g.append("rect").attr("class", "seg-sinvida").attr("fill", COLORS.sinVida).attr("height", y.bandwidth());
+
+            return g;
+          },
+          update => update,
+          exit => exit.remove()
+        );
+
+      rows.transition(t)
+        .attr("transform", d => `translate(0,${y(d.entidad)})`)
+        .attr("opacity", d => (!highlightBajaCal || d.entidad === "Baja California" ? 1 : 0.32));
+
+      rows.select(".seg-noloc")
+        .transition(t)
+        .attr("x", 0)
+        .attr("width", d => x(d.pctNoLoc))
+        .attr("height", y.bandwidth());
+
+      rows.select(".seg-vivas")
+        .transition(t)
+        .attr("x", d => x(d.pctNoLoc))
+        .attr("width", d => x(d.pctVivas))
+        .attr("height", y.bandwidth());
+
+      rows.select(".seg-sinvida")
+        .transition(t)
+        .attr("x", d => x(d.pctNoLoc + d.pctVivas))
+        .attr("width", d => x(d.pctSinVida))
+        .attr("height", y.bandwidth());
+
+      // Tooltip detallado con porcentajes y absolutos
+      rows
+        .on("mouseenter touchstart", function(event, d) {
+          d3.select(this).attr("opacity", 1);
+          showTooltip(event, `
+            <div class="tt-entity">${d.entidad}</div>
+            <div class="tt-row"><span class="tt-label">No localizadas:</span><span class="tt-value" style="color:${COLORS.noLoc}">${formatPct(d.pctNoLoc)}% (${formatInt(d.noLoc)})</span></div>
+            <div class="tt-row"><span class="tt-label">Localizadas con vida:</span><span class="tt-value" style="color:${COLORS.vivas}">${formatPct(d.pctVivas)}% (${formatInt(d.vivas)})</span></div>
+            <div class="tt-row"><span class="tt-label">Localizadas sin vida:</span><span class="tt-value" style="color:${COLORS.sinVida}">${formatPct(d.pctSinVida)}% (${formatInt(d.sinVida)})</span></div>
+            <div class="tt-note">Total sumado de la entidad: <strong>${formatInt(d.total)}</strong> registros.</div>
+          `);
+        })
+        .on("mousemove", moveTooltip)
+        .on("mouseleave", function(event, d) {
+          const baseOpacity = !highlightBajaCal || d.entidad === "Baja California" ? 1 : 0.32;
+          d3.select(this).attr("opacity", baseOpacity);
+          hideTooltip();
+        });
+
+      // Porcentaje de no localizadas al lado derecho de cada barra
+      const pctLabelsG = svg.select(".pct-labels-group")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      pctLabelsG.selectAll("text")
+        .data(data, d => d.entidad)
+        .join(
+          enter => enter.append("text")
+            .attr("x", innerWidth + 6)
+            .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .attr("fill", COLORS.noLoc)
+            .style("font-family", "JetBrains Mono, monospace")
+            .style("font-size", isMobile ? "10px" : "11px")
+            .text(d => `${d.pctNoLoc.toFixed(1)}%`),
+          update => update.transition(t)
+            .attr("x", innerWidth + 6)
+            .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+            .attr("opacity", d => (!highlightBajaCal || d.entidad === "Baja California" ? 1 : 0.4))
+            .text(d => `${d.pctNoLoc.toFixed(1)}%`),
+          exit => exit.remove()
+        );
+
+      // Eje Y (entidades)
+      const yAxisG = svg.select(".y-axis-group")
+        .attr("transform", `translate(${margin.left - 8},${margin.top})`);
+
+      yAxisG.selectAll("text")
+        .data(data, d => d.entidad)
+        .join(
+          enter => enter.append("text")
+            .attr("x", 0)
+            .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .attr("text-anchor", "end")
+            .attr("fill", COLORS.textPrimary)
+            .style("font-size", isMobile ? "11px" : "12px")
+            .text(d => d.entidad),
+          update => update.transition(t)
+            .attr("y", d => y(d.entidad) + y.bandwidth() / 2)
+            .attr("font-weight", d => (highlightBajaCal && d.entidad === "Baja California" ? "600" : "400"))
+            .attr("opacity", d => (!highlightBajaCal || d.entidad === "Baja California" ? 1 : 0.45))
+            .text(d => d.entidad),
+          exit => exit.remove()
+        );
+    }
+
+    /* ==========================================================================
+       8. CIERRE: BUSCADOR Y FICHA COMPARATIVA DE ENTIDAD
+       ========================================================================== */
+    function populateEntitySelector() {
+      const select = document.getElementById("entity-selector");
+      if (!select || APP_STATE.rawData.length === 0) return;
+
+      const sortedAlpha = [...APP_STATE.rawData].sort((a, b) =>
+        d3.ascending(a.entidad, b.entidad)
+      );
+
+      select.innerHTML = "";
+      sortedAlpha.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.entidad;
+        opt.textContent = `${item.entidad} (${formatInt(item.total)} registros)`;
+        select.appendChild(opt);
+      });
+
+      select.disabled = false;
+      // Seleccionar Estado de México por defecto
+      select.value = "Estado de México";
+      renderEntityDetailCard(select.value);
+
+      select.addEventListener("change", (e) => {
+        renderEntityDetailCard(e.target.value);
+      });
+    }
+
+    function renderEntityDetailCard(entityName) {
+      const panel = document.getElementById("entity-detail-panel");
+      if (!panel || APP_STATE.rawData.length === 0) return;
+
+      const entity = APP_STATE.rawData.find(d => d.entidad === entityName) || APP_STATE.rawData[0];
+      const nat = APP_STATE.nationalTotals;
+
+      const pctHombres = entity.total > 0 ? ((entity.hombres / entity.total) * 100).toFixed(2) : "0.00";
+      const pctMujeres = entity.total > 0 ? ((entity.mujeres / entity.total) * 100).toFixed(2) : "0.00";
+      const shareOfNational = ((entity.total / nat.total) * 100).toFixed(2);
+
+      const diffNoLocVsNat = (entity.pctNoLoc - nat.pctNoLoc).toFixed(2);
+      const diffSign = Number(diffNoLocVsNat) >= 0 ? "+" : "";
+
+      panel.innerHTML = `
+        <div class="entity-card-grid">
+          <div class="metric-tile">
+            <div class="metric-tile-label">Total de registros (${entity.entidad})</div>
+            <div class="metric-tile-value" style="color:${COLORS.total}">${formatInt(entity.total)}</div>
+            <div class="metric-tile-sub">${shareOfNational}% del total del archivo</div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="metric-tile-label">Desglose por sexo</div>
+            <div class="metric-tile-value" style="font-size:1.15rem; line-height:1.45;">
+              <span style="color:${COLORS.hombres}">H: ${formatInt(entity.hombres)}</span> ·
+              <span style="color:${COLORS.mujeres}">M: ${formatInt(entity.mujeres)}</span>
+            </div>
+            <div class="metric-tile-sub">
+              ${pctHombres}% hombres · ${pctMujeres}% mujeres
+              ${entity.sexDiff !== 0 ? `<br/>Diferencia vs total: ${formatInt(entity.sexDiff)}` : ""}
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="metric-tile-label">No localizadas</div>
+            <div class="metric-tile-value" style="color:${COLORS.noLoc}">${formatInt(entity.noLoc)}</div>
+            <div class="metric-tile-sub">${formatPct(entity.pctNoLoc)}% (${diffSign}${diffNoLocVsNat} pts vs archivo)</div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="metric-tile-label">Localizadas con vida</div>
+            <div class="metric-tile-value" style="color:${COLORS.vivas}">${formatInt(entity.vivas)}</div>
+            <div class="metric-tile-sub">${formatPct(entity.pctVivas)}% de la entidad</div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="metric-tile-label">Localizadas sin vida</div>
+            <div class="metric-tile-value" style="color:${COLORS.sinVida}">${formatInt(entity.sinVida)}</div>
+            <div class="metric-tile-sub">${formatPct(entity.pctSinVida)}% de la entidad</div>
+          </div>
+        </div>
+
+        <div class="comparison-bars">
+          <h4 class="comparison-title">Comparación de composición: ${entity.entidad} frente al agregado nacional del archivo</h4>
+
+          <div class="comp-row">
+            <div class="comp-row-header">
+              <span><strong>${entity.entidad}</strong></span>
+              <span class="mono-inline">No loc: ${formatPct(entity.pctNoLoc)}% · Con vida: ${formatPct(entity.pctVivas)}% · Sin vida: ${formatPct(entity.pctSinVida)}%</span>
+            </div>
+            <div class="stacked-track">
+              <div class="stacked-seg" style="width:${entity.pctNoLoc}%; background:${COLORS.noLoc};" title="No localizadas: ${formatPct(entity.pctNoLoc)}%"></div>
+              <div class="stacked-seg" style="width:${entity.pctVivas}%; background:${COLORS.vivas};" title="Localizadas con vida: ${formatPct(entity.pctVivas)}%"></div>
+              <div class="stacked-seg" style="width:${entity.pctSinVida}%; background:${COLORS.sinVida};" title="Localizadas sin vida: ${formatPct(entity.pctSinVida)}%"></div>
+            </div>
+          </div>
+
+          <div class="comp-row">
+            <div class="comp-row-header">
+              <span><strong>Proporción agregada del archivo (32 entidades)</strong></span>
+              <span class="mono-inline">No loc: ${formatPct(nat.pctNoLoc)}% · Con vida: ${formatPct(nat.pctVivas)}% · Sin vida: ${formatPct(nat.pctSinVida)}%</span>
+            </div>
+            <div class="stacked-track">
+              <div class="stacked-seg" style="width:${nat.pctNoLoc}%; background:${COLORS.noLoc};" title="No localizadas: ${formatPct(nat.pctNoLoc)}%"></div>
+              <div class="stacked-seg" style="width:${nat.pctVivas}%; background:${COLORS.vivas};" title="Localizadas con vida: ${formatPct(nat.pctVivas)}%"></div>
+              <div class="stacked-seg" style="width:${nat.pctSinVida}%; background:${COLORS.sinVida};" title="Localizadas sin vida: ${formatPct(nat.pctSinVida)}%"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ==========================================================================
+       9. CONFIGURACIÓN DE SCROLLAMA Y EVENTOS DE INTERFAZ
+       ========================================================================== */
+    function initScrollama() {
+      const scroller = scrollama();
+
+      scroller
+        .setup({
+          step: ".scrolly-section .step",
+          offset: 0.55,
+          debug: false
+        })
+        .onStepEnter(response => {
+          const el = response.element;
+          const piece = Number(el.dataset.piece);
+          const step = Number(el.dataset.step);
+
+          // Actualizar clase activa visual en los pasos de esa pieza
+          const parentSteps = el.closest(".scrolly-steps");
+          if (parentSteps) {
+            parentSteps.querySelectorAll(".step").forEach(s => s.classList.remove("is-active"));
+          }
+          el.classList.add("is-active");
+
+          // Actualizar estado y transiciones por pieza
+          if (piece === 1) {
+            APP_STATE.stepP1 = step;
+            renderPiece1();
+          } else if (piece === 2) {
+            APP_STATE.stepP2 = step;
+            const pills = document.querySelectorAll("#p2-summary-pills .radial-pill");
+            pills.forEach(p => p.classList.toggle("highlighted", step === 2));
+          } else if (piece === 3) {
+            APP_STATE.stepP3 = step;
+            renderPiece3();
+          } else if (piece === 4) {
+            APP_STATE.stepP4 = step;
+            // En el paso 2 de la Pieza 4, ordenar automáticamente por % de no localizadas
+            if (step === 2 && APP_STATE.sortP4 !== "pct_noloc") {
+              APP_STATE.sortP4 = "pct_noloc";
+              syncFilterButtons("[data-sort-p4]", "sortP4", "pct_noloc");
+            } else if (step === 1 && APP_STATE.sortP4 !== "total") {
+              APP_STATE.sortP4 = "total";
+              syncFilterButtons("[data-sort-p4]", "sortP4", "total");
+            }
+            renderPiece4();
+          }
+        });
+
+      window.addEventListener("resize", () => {
+        scroller.resize();
+        if (APP_STATE.rawData.length > 0) {
+          renderPiece1();
+          renderPiece3();
+          renderPiece4();
+        }
+      });
+    }
+
+    function syncFilterButtons(selector, datasetKey, activeVal) {
+      document.querySelectorAll(selector).forEach(btn => {
+        btn.classList.toggle("active", btn.dataset[datasetKey] === activeVal);
+      });
+    }
+
+    /* ==========================================================================
+       10. INICIALIZACIÓN DE BOTONES DE CARGA Y CONTROLES DE ORDENAMIENTO
+       ========================================================================== */
+    document.addEventListener("DOMContentLoaded", () => {
+      const fileInput = document.getElementById("shared-csv-input");
+
+      // Todos los botones "Cargar CSV" disparan el mismo selector de archivo y comparten datos
+      document.querySelectorAll(".trigger-csv-upload").forEach(btn => {
+        btn.addEventListener("click", () => {
+          fileInput.click();
+        });
+      });
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        loadDisappearancesCSV(file, (cleanedData, totals) => {
+          updateUploadStatus(`Archivo cargado: ${file.name} (${cleanedData.length} entidades · ${formatInt(totals.total)} registros)`);
+          renderPiece1();
+          renderPiece3();
+          renderPiece4();
+          populateEntitySelector();
+        });
+      });
+
+      // Filtros Pieza 1
+      document.querySelectorAll("[data-sort-p1]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          APP_STATE.sortP1 = btn.dataset.sortP1;
+          syncFilterButtons("[data-sort-p1]", "sortP1", APP_STATE.sortP1);
+          renderPiece1();
+        });
+      });
+
+      // Filtros Pieza 3
+      document.querySelectorAll("[data-sort-p3]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          APP_STATE.sortP3 = btn.dataset.sortP3;
+          syncFilterButtons("[data-sort-p3]", "sortP3", APP_STATE.sortP3);
+          renderPiece3();
+        });
+      });
+
+      // Filtros Pieza 4
+      document.querySelectorAll("[data-sort-p4]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          APP_STATE.sortP4 = btn.dataset.sortP4;
+          syncFilterButtons("[data-sort-p4]", "sortP4", APP_STATE.sortP4);
+          renderPiece4();
+        });
+      });
+
+      // Iniciar Scrollama
+      initScrollama();
+    });
+  </script>
+</body>
+</html>
